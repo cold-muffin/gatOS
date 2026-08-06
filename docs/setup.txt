@@ -1,0 +1,93 @@
+To make this run on your machine:
+
+check your machine archetecture:
+
+	uname -m
+
+make sure its x86
+then install the required ubuntu packages (for other distros and mac youll have to ask gpt or something)
+
+	sudo apt update
+	sudo apt install \
+	    build-essential \
+	    bison \
+	    flex \
+	    libgmp-dev \
+	    libmpc-dev \
+	    libmpfr-dev \
+	    libisl-dev \
+	    texinfo \
+	    wget \
+	    xorriso \
+	    mtools \
+	    grub-pc-bin \
+	    qemu-system-x86
+
+then you need to download gcc and binutils to cross compile
+
+
+	mkdir -p ~/src
+	cd ~/src
+
+	wget https://ftp.gnu.org/gnu/binutils/binutils-2.46.0.tar.xz
+	wget https://ftp.gnu.org/gnu/gcc/gcc-16.1.0/gcc-16.1.0.tar.xz
+
+	tar -xf binutils-2.46.0.tar.xz
+	tar -xf gcc-16.1.0.tar.xz
+
+now setup the location for bash to run it as a command so the compiler bin lives in ~/opt/cross/bin/
+
+	export PREFIX="$HOME/opt/cross"
+	export TARGET=i686-elf
+	export PATH="$PREFIX/bin:$PATH"
+
+now build binutils
+
+	cd ~/src
+	mkdir -p build-binutils
+	cd build-binutils
+
+	../binutils-2.46.0/configure \
+	    --target=$TARGET \
+	    --prefix="$PREFIX" \
+	    --with-sysroot \
+	    --disable-nls \
+	    --disable-werror \
+	    --enable-default-execstack=no
+
+	make -j$(nproc)
+	make install
+	i686-elf-as --version
+
+now gcc:
+
+	cd ~/src
+	mkdir -p build-gcc
+	cd build-gcc
+
+	../gcc-16.1.0/configure \
+	    --target=$TARGET \
+	    --prefix="$PREFIX" \
+	    --disable-nls \
+	    --enable-languages=c \
+	    --without-headers
+
+	make -j$(nproc) all-gcc
+	make -j$(nproc) all-target-libgcc
+	make install-gcc
+	make install-target-libgcc
+
+	i686-elf-gcc --version
+
+
+make it all permanent:
+
+	echo 'export PATH="$HOME/opt/cross/bin:$PATH"' >> ~/.bashrc
+	source ~/.bashrc
+test:
+	which 1686-elf-gcc
+Now you can run run.sh in path-to-gatOS/gatOS/dev to build and run
+	cd /path-to-gatOS/gatOS/dev
+	chmod +x run.sh
+	./run.sh
+When you run, to exit, because we're using tmux, do ctl+b to escape to tmux and press d to exit.
