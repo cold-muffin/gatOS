@@ -18,7 +18,7 @@ i686-elf-as boot.s -o boot.o
 for file in *.c; do
     echo "Compiling $file"
     i686-elf-gcc -c "$file" -o "${file%.c}.o" \
-        -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+        -std=gnu99 -ffreestanding -O2 -Wall -Wextra -Wno-error=implicit-function-declaration
 done
 
 #link boot and kernel. Can add more C files here later
