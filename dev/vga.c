@@ -27,10 +27,16 @@ static inline uint8_t vga_color(enum vga_color c)
 }
 
 #define VGA_WIDTH   640
-#define VGA_WIDTH_B (640 >> 3)
+#define VGA_WIDTH_B 80
 #define VGA_HEIGHT  480
-#define VGA_MEMORY  0xA0000 //pixel: 0xA0000-0xAFFFF, text: 0xB8000-0xBFFFF
-#define VGA_COLOR   0x02    //set layer
+#define VGA_MEMORY  0xA0000 
+#define VGA_COLOR   0x02    
+/*
+VGA_WIDTH_B is /8
+pixel: 0xA0000-0xAFFFF, text: 0xB8000-0xBFFFF
+0x02 is the layer set
+*/
+
 
 size_t vga_row;
 size_t vga_column;
@@ -48,17 +54,69 @@ void vga_reset(uint8_t bg_color)
 	for (size_t y = 0; y < VGA_HEIGHT; y++) {
 		for (size_t x = 0; x < VGA_WIDTH_B; x++) { //width /8
 			const size_t index = y * VGA_WIDTH_B + x;
-			vga_buffer[index] = 0xFF;
+			vga_buffer[index] = 0xFF; //
 		}
 	}
 }
 //==========================================================================================here
+void vga_set_pixel_byte(size_t index, uint8_t color) 
+{
+    //set bit to zero in all channels
+    VGA_COLOR[0] = 15;
+    const uint8_t bit = index & 0x7;
+    vga_buffer[index >> 3] = vga_buffer[index >> 3] & ~(1 << bit);
+    
+    
+    VGA_COLOR[0] = color;
+    vga_buffer[index >> 3] = vga_buffer[index >> 3] + (1 << bit);
+    
+}
+
 void vga_set_pixel(uint8_t color, size_t x, size_t y) 
 {
 	const size_t index = y * VGA_WIDTH + x;
-	terminal_buffer[index] = vga_entry(c, color);
+	vga_set_pixrl_byte(index, color);
 }
+/* 
+  ██████    ████████        ██████  ██████      ██████████  ██████████      ████    ██      ██
+██      ██  ██      ██    ██        ██    ██    ██          ██            ██    ██  ██      ██
+██      ██  ████████    ██          ██      ██  ██████      ██████      ██          ██████████
+██████████  ██      ██  ██          ██      ██  ██          ██          ██    ██    ██      ██
+██      ██  ██      ██    ██        ██    ██    ██          ██            ██    ██  ██      ██
+██      ██  ████████        ██████  ██████      ██████████  ██              ████    ██      ██
 
+
+██████████    ████████  ██    ██    ██          ██      ██  ██      ██      ██      ████████
+    ██            ██    ██  ██      ██          ████  ████  ████    ██    ██  ██    ██    ████
+    ██            ██    ████        ██          ██  ██  ██  ██  ██  ██  ██      ██  ██    ████
+    ██      ██    ██    ██  ██      ██          ██      ██  ██    ████  ██      ██  ████████
+    ██      ██    ██    ██    ██    ██          ██      ██  ██      ██    ██  ██    ██
+██████████    ████      ██      ██  ██████████  ██      ██  ██      ██      ██      ██
+
+
+    ██      ████████      ██████    ██████████  ██      ██  ██      ██  ██      ██  ██      ██
+  ██  ██    ██    ████  ██      ██      ██      ██      ██  ██      ██  ██      ██  ██      ██
+██      ██  ████████    ██              ██      ██      ██  ██      ██  ██      ██    ██  ██
+██      ██  ████          ██████        ██      ██      ██  ██      ██  ██  ██  ██      ██
+  ██  ██    ██  ██              ██      ██      ██      ██    ██  ██    ████  ████    ██  ██
+    ██  ██  ██    ██    ████████        ██        ██████        ██      ██      ██  ██      ██
+
+
+██      ██  ██████████    ██████        ██        ██████    ████████    ██      ██  ██████████
+██      ██        ██    ██      ██    ████      ██      ██          ██  ██      ██  ██
+  ██  ██        ██      ██      ██  ██  ██              ██    ██████    ██████████  ████████
+    ██        ██        ██      ██      ██        ██████            ██          ██          ██
+    ██      ██          ██      ██      ██      ██                  ██          ██          ██
+    ██      ██████████    ██████    ██████████  ██████████  ████████            ██  ████████
+    
+    
+  ██████    ██████████    ██████      ██████  
+██      ██          ██  ██      ██  ██      ██
+██                ██      ██████      ████████
+████████        ██      ██      ██          ██
+██      ██      ██      ██      ██  ██      ██
+  ██████        ██        ██████      ██████
+*/          
 void terminal_putchar(char c) 
 {
 	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
