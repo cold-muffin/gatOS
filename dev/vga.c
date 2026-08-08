@@ -21,56 +21,73 @@ enum vga_color {
 	VGA_COLOR_WHITE = 15,
 };
 
+void outb(uint16_t port, uint8_t value);
+uint8_t inb(uint16_t port);
 
-#define VGA_WIDTH   640
-#define VGA_WIDTH_B 80
-#define VGA_HEIGHT  480
-#define VGA_MEMORY  0xA0000 
-#define VGA_COLOR   0x02    
-/*
-VGA_WIDTH_B is /8
-pixel: 0xA0000-0xAFFFF, text: 0xB8000-0xBFFFF
-0x02 is the layer set
-*/
+//hardware communication
 
+#define VGA_MISC_WRITE 0x3C2;
 
-size_t vga_row;
-size_t vga_column;
-volatile uint8_t* vga_buffer = (volatile uint8_t*)VGA_MEMORY;
-volatile uint8_t* vga_color  = (volatile uint8_t*)VGA_COLOR; //just index at 0
+#define VGA_SEQ_INDEX 0x3C4
+#define VGA_SEQ_DATA 0x3C5
 
-//DISPLAY DRIVERR
-void vga_reset(uint8_t bg_color) 
+#define VGA_CRTC_INDEX 0x3D4
+#define VGA_CRTC_DATA 0x3D5
+
+#define VGA_GC_INDEX 0x3CE
+#define VGA_GC_DATA 0x3CF
+
+#define VGA_AC_INDEX 0x3C0
+#define VGA_INSTAT_READ 0x3DA  
+
+//SEQ = sequencer controls how mem is read
+//CRTC controls scan timing and resolution so it acts like a crt
+//GC = graphics controller controls plane write
+//AC = Attribute contoller maps pixel values to pallete
+
+static const uint8_t mode12_seq[5] =
+{   //basic settings for vga
+    0x03,      //0x00::00000011 : 000000:sync rst:async rst. ;; both on ;; normal operation
+    0x01,      //0x01::character clock 8 dot setting (???)
+    0x0F,      //0x02::MASK!!! COLORS 0x02 // all 4 open
+    0x00,      //0x03::character map (none)
+    0x06       //0x04::00000110 (00000:Chain-4 off(0):odd/even-disable(1):extended-memory(1):0)
+};
+
+static const uint8_t mode12_crtc[25] =
 {
-	vga_row = 0;
-	vga_column = 0;
-	vga_color[0] = bg_color;
-	
-    //set constant color
-	for (size_t y = 0; y < VGA_HEIGHT; y++) {
-		for (size_t x = 0; x < VGA_WIDTH_B; x++) { //width /8
-			const size_t index = y * VGA_WIDTH_B + x;
-			vga_buffer[index] = 0xFF; //
-		}
-	}
-}
-//==========================================================================================here
-void vga_set_pixel_byte(size_t index, uint8_t color) 
-{
-    //set bit to zero in all channels
-    VGA_COLOR[0] = 15;
-    const uint8_t bit = index & 0x7;
-    vga_buffer[index >> 3] = vga_buffer[index >> 3] & ~(1 << bit);
-    
-    
-    VGA_COLOR[0] = color;
-    vga_buffer[index >> 3] = vga_buffer[index >> 3] + (1 << bit);
-    
-}
+    0x5F, 0x4F, 0x50, 0x82,
+    0x54, 0x80, 0x0B, 0x3E,
+    0x00, 0x40, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0xEA, 0x8C, 0xDF, 0x28,
+    0x00, 0xE7, 0x04, 0xE3,
+    0xFF
+};
 
-void vga_set_pixel(uint8_t color, size_t x, size_t y) 
+static const uint8_t mode12_gc[9] =
 {
-	const size_t index = y * VGA_WIDTH + x;
-	vga_set_pixrl_byte(index, color);
-}
-    
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x05,
+    0x0F,
+    0xFF
+};
+
+static const uint8_t mode12_ac[21] =
+{
+    0x00, 0x01, 0x02, 0x03,
+    0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0A, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F,
+
+    0x01,
+    0x00,
+    0x0F,
+    0x00,
+    0x00
+};
