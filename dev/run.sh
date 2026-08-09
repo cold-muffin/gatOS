@@ -19,7 +19,7 @@ i686-elf-as vga_io.s -o vga_io.o
 for file in *.c; do
     echo "Compiling $file"
     i686-elf-gcc -c "$file" -o "${file%.c}.o" \
-        -std=gnu99 -ffreestanding -O2 -Wall -Wextra -Wno-error=implicit-function-declaration
+        -std=gnu99 -ffreestanding -O2 -Wall -Wextra
 done
 
 #link boot and kernel. Can add more C files here later
