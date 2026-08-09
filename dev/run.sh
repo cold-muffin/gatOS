@@ -53,7 +53,7 @@ echo
 tmux kill-session -t gatos 2>/dev/null || true
 
 tmux new-session -d -s gatos \
-    "qemu-system-i386 -cdrom '$PWD/gatOS.iso' -display curses"
+    "qemu-system-i386 -cdrom '$PWD/gatOS.iso'"
 
 tmux attach-session -t gatos
 

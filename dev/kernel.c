@@ -15,9 +15,12 @@
 
 void kernel_main(void) 
 {
-	/* Initialize terminal interface */
-	terminal_initialize();
+    vga_set_mode_12h();
+    vga_prepare_pixels();
 
-	/* Newline support is left as an exercise. */
-	terminal_writestring("Hello, kernel World!\n");
+    vga_clear(0);
+
+    vga_set_pixel(15, 100, 100);
+    vga_set_pixel(15, 101, 100);
+    vga_set_pixel(15, 102, 100);
 }

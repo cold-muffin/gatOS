@@ -1,0 +1,611 @@
+Yes. The important trick is to stop viewing these as “magic mode-12 numbers.” They are a description of the video signal and memory pipeline.
+
+For the exact arrays we used, the flow is:
+
+VRAM planes
+    ↓
+Graphics Controller       ← how CPU reads/writes VRAM
+    ↓
+Sequencer
+    ↓
+Attribute Controller      ← 4-bit pixel → palette index
+    ↓
+DAC                       ← palette index → actual RGB
+    ↓
+CRTC                      ← when each pixel/line is sent
+    ↓
+monitor
+
+The CRTC is the biggest one because it literally describes the shape and timing of a 640×480 frame. VGA horizontal timing is counted in character clocks; in our mode one character clock is 8 pixels. Vertical timing is counted in scanlines.
+
+CRTC: where 640×480 actually comes from
+
+We had:
+
+static const uint8_t mode12_crtc[25] =
+{
+    0x5F, 0x4F, 0x50, 0x82,
+    0x54, 0x80, 0x0B, 0x3E,
+    0x00, 0x40, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0xEA, 0x8C, 0xDF, 0x28,
+    0x00, 0xE7, 0x04, 0xE3,
+    0xFF
+};
+
+Each array position is the CRTC register index:
+
+Index	Value	Register	What it means
+00	5F	Horizontal Total	total length of one scanline
+01	4F	Horizontal Display End	visible horizontal pixels
+02	50	Start H blank	stop showing pixels
+03	82	End H blank	resume output after blanking
+04	54	Start H sync	begin horizontal sync pulse
+05	80	End H sync	end horizontal sync pulse
+06	0B	Vertical Total	low 8 bits of frame height/timing
+07	3E	Overflow	extra high bits for vertical values
+08	00	Preset Row Scan	vertical fine-scroll
+09	40	Max Scan Line	line repeat + high timing bits
+0A–0F	00	cursor/start-address stuff	mostly irrelevant here
+10	EA	Start V sync	vertical sync starts
+11	8C	End V sync	vertical sync ends + CRTC lock
+12	DF	Vertical Display End	visible height
+13	28	Offset	bytes between framebuffer rows
+14	00	Underline/addressing	no special addressing
+15	E7	Start V blank	stop displaying lines
+16	04	End V blank	finish blanking
+17	E3	CRTC Mode Control	addressing/sync behavior
+18	FF	Line Compare	split-screen feature disabled
+
+Those register meanings are defined by the VGA CRTC hardware.
+
+CRTC[0] = 0x5F: why that means 800 pixels total
+0x5F = 95
+
+VGA has a historical quirk: Horizontal Total stores:
+
+actual character clocks - 5
+
+so:
+
+95 + 5 = 100 character clocks
+
+Each is 8 pixels:
+
+100 × 8 = 800 pixel-clock periods
+
+So although the screen is 640 pixels wide, the VGA signal is actually 800 pixel periods wide.
+
+The remainder is used for blanking, synchronization, and border time.
+
+Conceptually:
+
+one horizontal line:
+
+0                                                   799
+|--------------------- 800 clocks --------------------|
+
+|<------ 640 visible ------>|<----- non-visible ----->|
+CRTC[1] = 0x4F: this gives you 640
+0x4F = 79
+
+This register stores:
+
+visible character clocks - 1
+
+therefore:
+
+79 + 1 = 80
+80 × 8 = 640 pixels
+
+There's your actual horizontal resolution.
+
+CRTC[2] = 0x50
+0x50 = 80
+
+Horizontal blanking begins at character clock 80:
+
+80 × 8 = pixel 640
+
+So immediately after your 640th visible pixel, VGA starts blanking the signal.
+
+CRTC[3] = 0x82
+
+Binary:
+
+0x82 = 10000010
+       │  │   └─ end-blank bits = 00010
+       │  └───── display-enable skew = 00
+       └──────── vertical-retrace access = 1
+
+Bit 7 being 1 is mostly an old EGA compatibility feature. Bits 4–0 contain part of the horizontal-blank-end counter. The sixth bit of that counter lives in CRTC register 05.
+
+This is a good example of why VGA tables look insane: one logical number can be split across two completely different registers.
+
+CRTC[4] = 0x54
+0x54 = 84
+84 × 8 = 672
+
+So the horizontal sync pulse starts at pixel-clock 672.
+
+The monitor sees roughly:
+
+0                    640    672                    800
+| visible picture     |      |                      |
+|=====================|------|SYNC------------------|
+CRTC[5] = 0x80
+0x80 = 10000000
+
+Here:
+
+bit 7      = high bit of horizontal blank end
+bits 6–5   = sync skew = 0
+bits 4–0   = horizontal sync end = 00000
+
+The sync-end comparison only looks at the low 5 bits of the running horizontal counter. Because those bits wrap, 00000 does not mean "pixel zero."
+
+Start sync was character 84:
+
+84 mod 32 = 20
+
+The next time the low five bits become zero is character 96:
+
+96 × 8 = 768
+
+Therefore roughly:
+
+H sync starts: 672
+H sync ends:   768
+
+width = 96 pixel clocks
+
+That's the standard kind of timing used for 640×480 VGA.
+
+Vertical timing: 0x0B, 0x3E, 0xEA, etc.
+
+Here's another major VGA weirdness.
+
+Vertical numbers need around 10 bits because:
+
+480 > 255
+525 > 255
+
+but VGA registers are only 8 bits wide.
+
+So VGA puts the low eight bits in normal registers and stuffs the missing high bits into the Overflow Register 07.
+
+Our overflow byte is:
+
+0x3E = 00111110
+
+Its bits mean:
+
+bit 7 = V-sync start bit 9
+bit 6 = visible-end bit 9
+bit 5 = vertical-total bit 9
+bit 4 = line-compare bit 8
+bit 3 = vertical-blank-start bit 8
+bit 2 = V-sync-start bit 8
+bit 1 = visible-end bit 8
+bit 0 = vertical-total bit 8
+
+So it isn't really a number like 62.
+
+It's eight unrelated switches packed together.
+
+Vertical total: 0x0B + Overflow
+
+Low eight bits:
+
+CRTC[6] = 0x0B
+        = 00001011
+
+Overflow gives:
+
+bit 8 = 0
+bit 9 = 1
+
+Put them together:
+
+10-bit value:
+
+10 00001011
+= 0x20B
+= 523
+
+VGA's vertical-total encoding gives a physical total of 525 scanlines.
+
+Thus your complete frame is:
+
+525 lines total
+
+not just 480. The other 45 lines are synchronization/blank/border time.
+
+Visible height: 0xDF
+CRTC[0x12] = 0xDF
+
+Overflow says its bit 8 is 1 and bit 9 is 0:
+
+01 11011111
+   ↓
+0x1DF
+= 479
+
+Since lines start at zero:
+
+0 ... 479
+
+is:
+
+480 lines
+
+There's your vertical resolution.
+
+So this pair:
+
+CRTC[01] = 4F   → 640 pixels
+CRTC[12] = DF + overflow → 480 lines
+
+is basically where 640×480 comes from.
+
+CRTC[0x10] = 0xEA: V-sync starts
+
+Combine it with the overflow bits:
+
+0xEA + bit8
+= 0x1EA
+= 490
+
+So vertical sync starts at scanline:
+
+490
+CRTC[0x11] = 0x8C
+0x8C = 10001100
+       │   └─── sync end = 1100 = 12
+       └─────── protect timing registers
+
+The start line is 490:
+
+490 low nibble = 0xA
+
+The sync ends when the low four counter bits reach:
+
+0xC
+
+which happens at about line:
+
+492
+
+So vertical sync is essentially:
+
+line 490
+line 491
+
+two scanlines long.
+
+Bit 7 also locks CRTC registers 00–07 against accidental changes. That's why your mode-setting code needs to unlock them before programming the mode.
+
+CRTC[0x13] = 0x28 is especially relevant to your code
+0x28 = 40
+
+This determines how far VGA advances in memory to reach the next scanline.
+
+Your graphics format has:
+
+8 pixels per byte per plane
+
+and your screen is:
+
+640 pixels
+
+so:
+
+640 / 8 = 80 bytes per plane per line
+
+Because of VGA's offset-register definition, the register contains half that:
+
+80 / 2 = 40 = 0x28
+
+Therefore:
+
+vga_buffer[y * 80 + x / 8]
+
+matches what the CRTC itself is configured to do.
+
+This isn't coincidence; the 0x28 tells the VGA display circuitry that each new line starts 80 framebuffer bytes later.
+
+CRTC[0x17] = 0xE3
+
+This is another true bitfield:
+
+0xE3 = 11100011
+       |||   ||
+       |||   |+-- MAP13 = 1
+       |||   +--- MAP14 = 1
+       ||+------- address wrap = 1
+       |+-------- byte addressing = 1
+       +--------- sync enabled = 1
+
+The important things for you are:
+
+sync = ON
+byte addressing = ON
+
+and the address mapping is configured so this behaves as a normal planar graphics framebuffer rather than old CGA-style scanline tricks.
+
+CRTC[0x18] = 0xFF
+
+This is Line Compare.
+
+Together with its two overflow bits we get:
+
+11 11111111
+= 0x3FF
+= 1023
+
+But the frame only has 525 scanlines.
+
+So VGA will never reach line 1023.
+
+Effectively:
+
+don't activate the hardware split-screen feature.
+
+Graphics Controller: how CPU writes become pixels
+
+Now this array:
+
+static const uint8_t mode12_gc[9] =
+{
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x00,
+    0x05,
+    0x0F,
+    0xFF
+};
+
+The GC doesn't determine resolution. It determines how *vga_buffer = whatever interacts with the four VRAM planes.
+
+The nine values mean:
+
+GC 00 = 00  Set/Reset color = 0000
+GC 01 = 00  Set/Reset disabled
+GC 02 = 00  comparison color = 0000
+GC 03 = 00  no bit rotation; normal replace operation
+GC 04 = 00  CPU reads plane 0 in read-mode 0
+GC 05 = 00  read mode 0, write mode 0
+GC 06 = 05  GRAPHICS + memory window A0000-AFFFF
+GC 07 = 0F  compare all four planes
+GC 08 = FF  all eight bits of a byte may be modified
+
+The interesting one is:
+
+GC[6] = 0x05
+
+Binary:
+
+00000101
+      |||
+      ||+-- graphics mode = 1
+      |+--- odd/even chaining = 0
+      +---- memory-map field = 01
+
+Memory-map 01 means:
+
+0xA0000 – 0xAFFFF
+
+So this is actually one of the registers that causes your graphics VRAM to appear at 0xA0000.
+
+And:
+
+GC[8] = 0xFF
+       = 11111111
+
+means:
+
+all 8 pixel positions in the addressed byte may change
+
+When drawing one pixel, we'll temporarily replace it with something like:
+
+00100000
+
+so only one of those eight pixel positions can change.
+
+One important detail about GC[5] = 0x00
+
+The base VGA mode starts with:
+
+write mode 0
+
+because bits 1–0 are:
+
+00
+
+Later I suggested:
+
+mode &= ~0x03;
+mode |= 0x02;
+
+That turns it into:
+
+00000010
+      ^^
+      10 = Write Mode 2
+
+That's not part of selecting 640×480 itself.
+
+It's us saying:
+
+Okay, the display mode is configured. Now I want the VGA's CPU-write circuitry to behave in a convenient way for my set_pixel() implementation.
+
+Write Mode 2 treats:
+
+CPU writes 0000abcd
+
+as:
+
+plane 3 = a
+plane 2 = b
+plane 1 = c
+plane 0 = d
+
+and expands each bit across the plane byte. That makes writing your 4-bit color number much easier.
+
+Attribute Controller: converting your 4 planes into colors
+
+Our array was:
+
+static const uint8_t mode12_ac[21] =
+{
+    0x00, 0x01, 0x02, 0x03,
+    0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0A, 0x0B,
+    0x0C, 0x0D, 0x0E, 0x0F,
+
+    0x01,
+    0x00,
+    0x0F,
+    0x00,
+    0x00
+};
+
+The first 16 entries are literally a lookup table.
+
+If the framebuffer planes produce:
+
+0101 = color 5
+
+then VGA looks at:
+
+AC palette register 5
+
+which we've set to:
+
+05
+
+so:
+
+pixel 0 → palette 0
+pixel 1 → palette 1
+pixel 2 → palette 2
+...
+pixel 15 → palette 15
+
+It's an identity mapping. The Attribute Controller palette maps the 4-bit graphics value onward toward the VGA DAC.
+
+You could do something weird like:
+
+AC[0] = 4
+AC[1] = 4
+AC[2] = 4
+...
+AC[15] = 4
+
+and then every one of your 16 framebuffer colors would appear as palette color 4.
+
+That's the conceptual role of those first 16 hex values.
+
+Then come five control registers.
+
+AC[0x10] = 0x01
+0x01 = 00000001
+              ^
+              graphics enable
+
+So:
+
+bit 0 = 1 → graphics mode
+bit 1 = 0 → color, not mono emulation
+bit 3 = 0 → blink off
+bit 6 = 0 → not 256-color mode
+
+This is one of the switches that tells VGA:
+
+these four incoming plane bits represent graphics pixels, not text attributes.
+
+AC[0x11] = 0x00
+
+Overscan/border color:
+
+palette index 0
+
+Usually black.
+
+AC[0x12] = 0x0F
+00001111
+    ||||
+    |||+ plane 0 visible
+    ||+  plane 1 visible
+    |+   plane 2 visible
+    +    plane 3 visible
+
+All four color planes contribute to the displayed pixel.
+
+This looks similar to Sequencer Map Mask 0x0F, but they are not the same thing:
+
+Sequencer Map Mask:
+    which planes CPU WRITES can modify
+
+Attribute plane enable:
+    which planes contribute to DISPLAYED colors
+
+AC[0x13] = 0x00
+
+Horizontal pixel panning:
+
+shift picture horizontally by 0 pixels
+
+If you changed it, VGA can move the displayed image by a few pixels without rewriting the framebuffer.
+
+AC[0x14] = 0x00
+
+Color Select:
+
+upper palette-selection bits = 0
+
+So we're using the normal low palette range rather than selecting another block of DAC colors.
+
+And one last distinction that makes the whole VGA architecture click:
+
+Your framebuffer
+color = 0b1010
+        │
+        ▼
+four VGA planes
+1010
+        │
+        ▼
+Attribute Controller
+palette register 10
+        │
+        ▼
+DAC palette
+RGB value
+        │
+        ▼
+monitor
+
+So 10 is not inherently "light green" or "bright whatever." It's a palette index. The DAC ultimately decides what actual red/green/blue intensity that index produces. VGA's DAC contains 256 palette entries with RGB components.
+
+The really neat part is that after decoding all of this, your supposedly magic:
+
+0x5F, 0x4F, ...
+
+becomes something much more concrete:
+
+0x5F → 800 total horizontal clocks
+0x4F → 640 visible pixels
+0x0B + 0x3E → 525 total lines
+0xDF + 0x3E → 480 visible lines
+0x28 → 80 framebuffer bytes per scanline
+0x05 GC → graphics at A0000
+0x0F AC → use all four color planes
+0x01 AC → treat them as graphics
+
+That's basically Mode 12h constructed from first principles, rather than “write mode number 12 somewhere.”
+
+
