@@ -1,0 +1,21 @@
+https://wiki.osdev.org/PS/2_Keyboard#Commands
+there's a lot of tedious reading of scan codes so we vibe coding ts
+
+so you can send a command code and that can start scanning or just be an empty command for device detection or reseting something. The keyboard responds with a "resend this" or "gochu". The scancode table is enormous
+
+called a PS/2 keyboard. I'll look into how to implement it tmr.
+
+keyboard is gonna be interesting... 
+some c code at the end with inb():
+    https://wiki.osdev.org/I8042_PS/2_Controller
+
+As I understand this can tell if the mouse button is pressed but not the mouse position
+This has some implementation too, not just yapping!
+https://wiki.osdev.org/PS/2_Mouse
+
+general history thingie:
+https://wiki.osdev.org/PS/2
+
+This is how linux implements this:
+    https://lxr.linux.no/#linux+v3.5.4/drivers/input/keyboard/atkbd.c
+    no clue how to read this tho...

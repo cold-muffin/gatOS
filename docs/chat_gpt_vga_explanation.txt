@@ -1,4 +1,9 @@
-Yes. The important trick is to stop viewing these as “magic mode-12 numbers.” They are a description of the video signal and memory pipeline.
+There is also a non-AI thingie that explains this: 
+https://wiki.osdev.org/VGA_Hardware
+http://www.osdever.net/FreeVGA/vga/vga.htm
+https://web.archive.org/web/20251231201151/http://tinyvga.com/vga-timing
+
+CHATGPT EXPLANATION SHORTER:
 
 For the exact arrays we used, the flow is:
 
