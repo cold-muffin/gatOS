@@ -1,0 +1,4 @@
+so. compiler or interpreter? 
+I think it would be easier to write a compiler 
+
+(for assembly at least. i can make each instruction 4 letters or something. Then i would need to write a c compiler and file system)

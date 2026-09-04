@@ -12,7 +12,7 @@ rm -f *.o
 
 #build grub bootloader
 i686-elf-as boot.s -o boot.o
-i686-elf-as vga_io.s -o vga_io.o
+i686-elf-as io.s -o io.o
 
 # Compile every C file in this directory
 
