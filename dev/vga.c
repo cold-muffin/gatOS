@@ -215,3 +215,6 @@ void vga_clear(uint8_t color)
         VGA_MEMORY[i] = color & 0x0F;
     }
 }
+void vga_set_pixel_line(size_t ignore, uint8_t color, size_t x, size_t y) {
+    vga_set_pixel(color, x, y);
+}
