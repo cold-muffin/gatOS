@@ -1,21 +1,22 @@
 /*
 each instruction is a pointer to the function in the kernel and an operand
 */
-
+/*
 void execute(size_t* instruction) {
     void (*command)(size_t);
     command = *instruction;
     command(*instruction+sizeof(size_t));
 }
-
+*/
 /*The instructions:
 im gonna assume the assembler makes memory like this:
 |head||program and instructions||initial alloation|
 |||||||||||||||||||||||||||||||||||||||||||||||||||
 so the unallocated space is free for the taking. I'll assign a one element array and use that as a starting pointer for the rest. I know in assembly I just put that in the .bss. 
 */
+/*
 size_t* startptr = *{0};
-size_t* nonkernelstart = 1024; // is size_t 32bits? (4bytes)
+size_t* nonkernelstart = 1024; // is size_t 32bits? (4bytes)*/
 /*I need some memory for the kernel to keep track of stuff.
 so I'll give 4kb to the kernel for now.
 so I'll allocate like this: 
@@ -24,6 +25,7 @@ Kernel memory:
 |active proc||passive proc||empty allocs||  ?    |
 ||||||||||||||||||||||||||||||||||||||||||||||||||
 */
+/*
 typedef struct {
     size_t size;     //length of the section
     size_t pointer;  //start pointer
@@ -42,7 +44,7 @@ void free(size_t pointer) {
     //then delete itself from an allocated list and shift everything down.
 }
 
-
+*/
 //==============================================================================
 /*this is where the interpreter itself starts. besides the existence of this there needs to be a way to launch the first process that launches others so there will be (in storage) a startup program that can launch a terminal or a gui or other stuff and that can be configured later.
 So in an allocation the first few bytes are the registers and info like:
@@ -72,7 +74,7 @@ so I need to also make:
 
 Here is the interpreter:
 */
-
+/*
 typedef struct {
     size_t r1;
     size_t r2;
@@ -88,11 +90,12 @@ typedef struct {
     size_t rsp; //stack pointer
     size_t whereStackEnds;
     size_t whereStackStarts; //ill add more later
-} procHeader;
+} procHeader;*/
 //idea is procHeader is changed by everything
 //======================================================================================
 //Also I just realized im gonna have 3 stacks shiiiiit
 //======================================================================================
+/*
 void push(size_t in) {
     
-}
+}*/

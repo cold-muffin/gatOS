@@ -3,11 +3,7 @@ export PATH := $(HOME)/opt/cross/bin:$(PATH)
 .PHONY: run compile link image clean
 
 run: image
-	tmux kill-session -t gatos 2>/dev/null || true
-	tmux new-session -d -s gatos "qemu-system-i386 -cdrom '$(CURDIR)/gatOS.iso' -display curses"
-	tmux attach-session -t gatos
-	tmux kill-session -t gatos 2>/dev/null || true
-
+	qemu-system-i386 -cdrom gatOS.iso -display gtk
 compile:
 	@set -e; \
 	rm -f *.o; \

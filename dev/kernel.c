@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "vga.h"
+#include "graphics.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -25,4 +26,6 @@ void kernel_main(void)
     vga_set_pixel(15, 100, 100);
     vga_set_pixel(15, 101, 100);
     vga_set_pixel(15, 102, 100);
+    
+    graphics_draw_text("skibidi toilet", 200,200,20,0xFA);
 }
