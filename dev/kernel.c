@@ -34,19 +34,30 @@ typedef enum {
     YELLOW        = 0xE,
     WHITE         = 0xF
 } VGAColor;
+void delay_loops(volatile unsigned long count) {
+    while (count > 0) {
+        count--;
+    }
+}
 
 void kernel_main(void) 
 {
     vga_set_mode_12h();
     vga_prepare_pixels();
-
     vga_clear(0);
-
-    vga_set_pixel(15, 100, 100);
-    vga_set_pixel(15, 101, 100);
-    vga_set_pixel(15, 102, 100);
-    
     graphics_draw_text("GATOS IS MUY BIEN\n\nNECESITAMOS INVESTOROS\n EFRAT es el Goatos!!!", 200,50,20,RED);
+        
+    for (int i = 0; i < 500; i++) {
+        
     
-    draw_cat(300,300,70,MAGENTA);
+        vga_set_pixel(15, 100, 100);
+        vga_set_pixel(15, 101, 100);
+        vga_set_pixel(15, 102, 100);
+        
+
+        draw_cat(i,300,70,MAGENTA);
+        //delay_loops(100);
+        draw_cat(i,300,70, BLACK);
+    }
 }
+
