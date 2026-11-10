@@ -1,7 +1,16 @@
+typedef struct {
+    void* start;
+    size_t len;
+} alloc;
+static alloc active_allocations[10000];//max
+static alloc passive_allocations[10000];//max
+
+
 //(cahtgpt) just linux
 /*
 void write_file(char* buffer, char* name) {}
 void read_file(char* buffer, char* name) {}
+
 
 void assemble(char* name) {
     
@@ -17,10 +26,7 @@ void exec_file(char* name) {
     
 }
 
-typedef struct allocations {
-    char* piece,
-    size_t size
-}allocations;
+
 
 void alloc(char** allocations, size_t size) {
 

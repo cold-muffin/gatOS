@@ -45,7 +45,7 @@ void kernel_main(void)
     vga_set_mode_12h();
     vga_prepare_pixels();
     vga_clear(0);
-    graphics_draw_text("GATOS IS MUY BIEN\n\nNECESITAMOS INVESTOROS\n EFRAT es el Goatos!!!", 200,50,20,RED);
+    graphics_draw_text("GATOS IS MUY BIEN\n\nNECESITAMOS INVESTOROS\n EFRAT es el Goatos!!!", 200,50,30,RED);
         
     for (int i = 0; i < 500; i++) {
         
