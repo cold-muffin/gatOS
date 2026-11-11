@@ -1,3 +1,5 @@
+#include <stdint.h>
+#include <stddef.h>
 typedef struct {
     void* start;
     size_t len;

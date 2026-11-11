@@ -35,20 +35,26 @@ idt_set_gate(
 );
 */
 extern void interrupt_test_stub(void);
+
 volatile uint32_t interrupt_count = 0;
 
-void interrupt_test_handler(void) {
+void interrupt_test_handler() {
     interrupt_count++;
 }
 
-void interrupts_innit(void) {
+void interrupts_init() {
     //disable hardware interrupts in setup
     __asm__ volatile ("cli");
     //configure IDT ptr
     idt_pointer.limit = sizeof(idt)-1;
     idt_pointer.base = (uint32_t)idt;
     //read current segment
-    
+    uint16_t code_segment;
+    __asm__ volatile ("mov %%cs, %0" : "=r"(code_segment));
+    //register test interrupt
+    idt_set_gate(0x30, (uint32_t) interrupt_test_stub, code_segment, 0x8E);
+    //tell cpu where IDT is
+    __asm__ volatile ("lidt %0" : :"m"(idt_pointer));
 }
 
 

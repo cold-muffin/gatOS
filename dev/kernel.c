@@ -5,6 +5,7 @@
 #include "vga.h"
 #include "graphics.h"
 #include "cat.h"
+#include "interrupt.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -40,24 +41,22 @@ void delay_loops(volatile unsigned long count) {
     }
 }
 
-void kernel_main(void) 
+void kernel_main() 
 {
     vga_set_mode_12h();
     vga_prepare_pixels();
     vga_clear(0);
     graphics_draw_text("GATOS IS MUY BIEN\n\nNECESITAMOS INVESTOROS\n EFRAT es el Goatos!!!", 200,50,30,RED);
-        
-    for (int i = 0; i < 500; i++) {
-        
     
-        vga_set_pixel(15, 100, 100);
-        vga_set_pixel(15, 101, 100);
-        vga_set_pixel(15, 102, 100);
-        
+    interrupts_init();
 
-        draw_cat(i,300,70,MAGENTA);
-        //delay_loops(100);
-        draw_cat(i,300,70, BLACK);
+    uint32_t before = interrupt_count;
+
+    __asm__ volatile ("int $0x30");
+
+    if (interrupt_count == before + 1) {
+        graphics_draw_text("yay", 300,300,30,GREEN);
+    } else {
+        graphics_draw_text("nay", 300,300,30,RED);
     }
 }
-
