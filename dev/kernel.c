@@ -51,7 +51,8 @@ void kernel_main()
     interrupts_init();
 
     uint32_t before = interrupt_count;
-
+    
+    //do the test intrpt
     __asm__ volatile ("int $0x30");
 
     if (interrupt_count == before + 1) {
